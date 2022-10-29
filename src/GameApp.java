@@ -2,143 +2,183 @@ import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
-import javafx.scene.shape.Shape;
+import javafx.scene.transform.Rotate;
+import javafx.scene.transform.Scale;
+import javafx.scene.transform.Translate;
 import javafx.stage.Stage;
-
 import java.util.Random;
 
 /**
  * game logic and object construction happens in this class
+ * the layout of the objects will also be in here?
  */
 class Game extends Pane {
  //take all the objects needed for the game
- Pond pond;
- Cloud cloud;
- Helipad helipad;
- Helicopter helicopter;
- int borders = 25;
- public Game(Pond pond, Cloud cloud, Helipad helipad, Helicopter helicopter){
-  this.pond = pond;
-  this.cloud = cloud;
-  this.helipad = helipad;
-  this.helicopter = helicopter;
-  setupLayout();
- }
+ Helipad helipad = new Helipad();
+ Pond pond = new Pond();
+ Random rand =new Random();
+ Cloud cloud = new Cloud();
+ Helicopter helicopter = new Helicopter();
+ public Game() {
 
- private void setupLayout(){
-  Random rand = new Random();
-  double xPosition = rand.nextDouble(GameApp.size.getX());
-  double yPosition = rand.nextDouble(GameApp.size.getY());
-  double xPosition2 = rand.nextDouble(GameApp.size.getX());
-  double yPosition2 = rand.nextDouble(GameApp.size.getY());
-  pond.shape.setLayoutX(xPosition);
-  pond.shape.setLayoutY(yPosition);
-  cloud.shape.setLayoutY(yPosition2);
-  cloud.shape.setLayoutX(xPosition2);
-  helipad.shape.setLayoutX(GameApp.size.getX()/2 - helipad.getWidth()/2);
-  helipad.shape.setLayoutY(GameApp.size.getY()-helipad.getHeight()-borders);
-  super.getChildren().addAll(helipad.shape, pond.shape, cloud.shape);
- }
+  this.setScaleY(-1);
+  //translate the helipad
+  helipad.setTranslateX(500/2 - 75/2);
+  helipad.setTranslateY(100);
 
+  //pond stuff ((GameApp.size.getY() - GameApp.size.getY() / 2) + GameApp.size.getY() / 2)
+  double lY = rand.nextDouble( GameApp.size.getY() - GameApp.size.getY()/2) + GameApp.size.getY()/2;
+  double lY2 = rand.nextDouble( GameApp.size.getY() - GameApp.size.getY()/2) + GameApp.size.getY()/2;
+  pond.setTranslateY(lY);
+  cloud.setTranslateY(lY2);
+
+  //helicopter stuff
+  helicopter.setTranslateX((500/2 - 75/2) + 75/2);
+  helicopter.setTranslateY(100 + (75/2));
+
+  this.getChildren().addAll(helipad, pond,cloud, helicopter);
+
+ }
 }
 
 /**
  * No movement in the game object class
  * Any behaviour or state will be setup in this class
  */
-abstract class GameObject extends Group {
- Shape shape;
- Point2D size;
- public GameObject(Color color, Shape shape, Point2D size){
-  this.shape = shape;
-  this.shape.setFill(color);
-  this.size = size;
+abstract class GameObject extends Group implements Updatable{
+ private Translate translation;
+ private Rotate rotation;
+ private Scale scale;
+ public GameObject() {
+  translation = new Translate();
+  rotation = new Rotate();
+  scale = new Scale();
+  this.getTransforms().addAll(translation, rotation, scale);
  }
-
- public double getHeight(){
-  return size.getY();
- }
-
- public double getWidth(){
-  return size.getX();
- }
-
+ void add(Node node){this.getChildren().add(node);}
 }
+ class Pond extends GameObject {
+  public Pond(){
+   Random rand = new Random();
+   //random = (max - min) + min;
+   Circle pond = new Circle(25);
+   pond.setFill(Color.BLUE);
+   double cX = pond.getRadius();
+   double lX = rand.nextDouble( (GameApp.size.getX() - (int)cX + cX));
 
-class Pond extends GameObject{
+   pond.setTranslateX(lX);
+   add(pond);
+  }
 
- public Pond(Color color, Shape shape, Point2D size) {
-  super(color, shape, size);
- }
-}
+  @Override
+  public void update() {
 
-class Cloud extends GameObject{
+  }
 
- public Cloud(Color color, Shape shape, Point2D size) {
-  super(color,shape, size);
- }
-}
-
-class Helipad extends GameObject{
-
- public Helipad(Color color, Shape shape, Point2D size) {
-  super(color, shape, size);
- }
-}
-
-class Helicopter extends GameObject{
-
- public Helicopter(Color color, Shape shape, Point2D size) {
-  super(color, shape,size);
- }
-}
-
-class PondAndCloud{
-
-}
-
-interface Updatable{
-
-}
-
-/**
- * Sets up all the keyboard events  handlers to invoke public methods
- * in the game
- */
-public class GameApp extends Application {
- static Point2D size = new Point2D(500,800);
- public double sizeX(){
-  return size.getX();
- }
- public double sizeY(){
-  return size.getY();
- }
- Pond pond = new Pond(Color.BLUE, new Circle(25), new Point2D(25,25));
- Cloud cloud = new Cloud(Color.WHITE, new Circle(50), new Point2D(50,50));
- Helipad helipad = new Helipad(Color.GRAY, new Rectangle (100,100),new Point2D(100,100));
- Helicopter helicopter = new Helicopter(Color.GRAY, new Rectangle(20,20), new Point2D(5,5));
- @Override
- public void start(Stage stage) throws Exception {
-  Game gameWindow = new Game(pond, cloud, helipad, helicopter);
-  Scene scene = new Scene(gameWindow, size.getX(), size.getY());
-  scene.setFill(Color.BLACK);
-  stage.setTitle("RainMaker");
-  stage.setScene(scene);
-
-  //animation starter
-  AnimationTimer loop = new AnimationTimer() {
-   @Override
-   public void handle(long now) {
-
-   }
-  };
-  stage.show();
  }
 
- public static void main(String[] args){launch(args);}
-}
+ class Cloud extends GameObject {
+ public Cloud(){
+  Random rand = new Random();
+
+  Circle cloud = new Circle(50);
+  cloud.setFill(Color.WHITE);
+  double cX = cloud.getRadius();
+  double lX = rand.nextDouble( (GameApp.size.getX() - (int)cX)) + cX;
+  cloud.setTranslateX(lX);
+  add(cloud);
+
+ }
+  @Override
+  public void update() {
+
+  }
+
+ }
+
+ class Helipad extends GameObject {
+  public Helipad(){
+   Rectangle base = new Rectangle(75,75);
+   Circle circle = new Circle(25);
+   circle.setTranslateX(75/2);
+   circle.setTranslateY(75/2);
+   base.setFill(Color.GRAY);
+   base.setStroke(Color.WHITE);
+   circle.setFill(Color.GRAY);
+   circle.setStroke(Color.WHITE);
+   add(base);
+   add(circle);
+  }
+
+  @Override
+  public void update() {
+
+  }
+
+ }
+
+ class Helicopter extends GameObject {
+ //crice and a line
+ public Helicopter(){
+  Circle base = new Circle(10);
+  base.setFill(Color.YELLOW);
+  Line line = new Line();
+  line.setStartY(0);
+  line.setEndY(35);
+  line.setStroke(Color.YELLOW);
+  line.setStrokeWidth(2);
+  add(base);
+  add(line);
+ }
+  @Override
+  public void update() {
+
+  }
+ }
+
+ class PondAndCloud {
+
+ }
+
+ interface Updatable {
+  void update();
+ }
+
+ /**
+  * Sets up all the keyboard events  handlers to invoke public methods
+  * in the game
+  */
+ public class GameApp extends Application {
+  static Point2D size = new Point2D(500, 800);
+
+  @Override
+  public void start(Stage stage) throws Exception {
+   Game gameWindow = new Game();
+   Scene scene = new Scene(gameWindow, size.getX(), size.getY());
+   scene.setFill(Color.BLACK);
+   stage.setTitle("RainMaker");
+   stage.setScene(scene);
+
+   //animation starter
+   AnimationTimer loop = new AnimationTimer() {
+    @Override
+    public void handle(long now) {
+
+    }
+   };
+   stage.show();
+  }
+
+  public static void main(String[] args) {launch(args);}
+
+ }
+
+
+
