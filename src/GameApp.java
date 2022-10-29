@@ -1,9 +1,12 @@
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -13,7 +16,9 @@ import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Scale;
 import javafx.scene.transform.Translate;
 import javafx.stage.Stage;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * game logic and object construction happens in this class
@@ -63,6 +68,7 @@ abstract class GameObject extends Group implements Updatable{
   this.getTransforms().addAll(translation, rotation, scale);
  }
  void add(Node node){this.getChildren().add(node);}
+
 }
  class Pond extends GameObject {
   public Pond(){
@@ -85,15 +91,15 @@ abstract class GameObject extends Group implements Updatable{
  }
 
  class Cloud extends GameObject {
- public Cloud(){
-  Random rand = new Random();
+  public Cloud(){
+   Random rand = new Random();
 
-  Circle cloud = new Circle(50);
-  cloud.setFill(Color.WHITE);
-  double cX = cloud.getRadius();
-  double lX = rand.nextDouble( (GameApp.size.getX() - (int)cX)) + cX;
-  cloud.setTranslateX(lX);
-  add(cloud);
+   Circle cloud = new Circle(50);
+   cloud.setFill(Color.WHITE);
+   double cX = cloud.getRadius();
+   double lX = rand.nextDouble( (GameApp.size.getX() - (int)cX)) + cX;
+   cloud.setTranslateX(lX);
+   add(cloud);
 
  }
   @Override
@@ -125,22 +131,22 @@ abstract class GameObject extends Group implements Updatable{
  }
 
  class Helicopter extends GameObject {
- //crice and a line
- public Helicopter(){
-  Circle base = new Circle(10);
-  base.setFill(Color.YELLOW);
-  Line line = new Line();
-  line.setStartY(0);
-  line.setEndY(35);
-  line.setStroke(Color.YELLOW);
-  line.setStrokeWidth(2);
-  add(base);
-  add(line);
- }
-  @Override
-  public void update() {
-
+ //cricle and a line
+  public Helicopter(){
+   Circle base = new Circle(10);
+   base.setFill(Color.YELLOW);
+   Line line = new Line();
+   line.setStartY(0);
+   line.setEndY(35);
+   line.setStroke(Color.YELLOW);
+   line.setStrokeWidth(2);
+   add(base);
+   add(line);
   }
+   @Override
+   public void update() {
+
+   }
  }
 
  class PondAndCloud {
@@ -157,6 +163,12 @@ abstract class GameObject extends Group implements Updatable{
   */
  public class GameApp extends Application {
   static Point2D size = new Point2D(500, 800);
+  //setting up the keys so that it won't keep pressing when a key is
+  //pressed down
+  Set<KeyCode> keysDown= new HashSet<>();
+  int key(KeyCode k){
+    return keysDown.contains(k) ? 1:0;
+  }
 
   @Override
   public void start(Stage stage) throws Exception {
@@ -165,6 +177,23 @@ abstract class GameObject extends Group implements Updatable{
    scene.setFill(Color.BLACK);
    stage.setTitle("RainMaker");
    stage.setScene(scene);
+
+   //setup the keys pressed when inside of the scene
+   scene.setOnKeyPressed(new EventHandler<KeyEvent>() {
+    @Override
+    public void handle(KeyEvent event) {
+     keysDown.add(event.getCode());
+     System.out.println("pressing on "+ event.getCode());
+    }
+   });
+
+   scene.setOnKeyReleased(new EventHandler<KeyEvent>() {
+    @Override
+    public void handle(KeyEvent event) {
+     keysDown.remove(event.getCode());
+     System.out.println("removed "+ event.getCode());
+    }
+   });
 
    //animation starter
    AnimationTimer loop = new AnimationTimer() {
