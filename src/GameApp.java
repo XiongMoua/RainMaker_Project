@@ -1,12 +1,17 @@
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.event.EventHandler;
+import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.Background;
+import javafx.scene.layout.BackgroundFill;
+import javafx.scene.layout.CornerRadii;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -20,6 +25,10 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 
+interface Updatable {
+ void update();
+}
+
 /**
  * game logic and object construction happens in this class
  * the layout of the objects will also be in here?
@@ -32,25 +41,38 @@ class Game extends Pane {
  Cloud cloud = new Cloud();
  Helicopter helicopter = new Helicopter();
  public Game() {
-
   this.setScaleY(-1);
+  this.setBackground(new Background(new BackgroundFill(Color.BLACK,new CornerRadii(0), Insets.EMPTY)));
   //translate the helipad
   helipad.setTranslateX(500/2 - 75/2);
   helipad.setTranslateY(100);
-
   //pond stuff ((GameApp.size.getY() - GameApp.size.getY() / 2) + GameApp.size.getY() / 2)
   double lY = rand.nextDouble( GameApp.size.getY() - GameApp.size.getY()/2) + GameApp.size.getY()/2;
   double lY2 = rand.nextDouble( GameApp.size.getY() - GameApp.size.getY()/2) + GameApp.size.getY()/2;
   pond.setTranslateY(lY);
   cloud.setTranslateY(lY2);
-
   //helicopter stuff
   helicopter.setTranslateX((500/2 - 75/2) + 75/2);
   helicopter.setTranslateY(100 + (75/2));
-
   this.getChildren().addAll(helipad, pond,cloud, helicopter);
+ }
+
+ public void startIgnition(boolean start){
+  if(start){
+   helicopter.startIgnition();
+  }else{
+
+  }
+ }
+ public void moving(boolean move){
+  if(move){
+   helicopter.setTranslateY(helicopter.getTranslateY() + 1.25);
+  }
 
  }
+
+
+
 }
 
 /**
@@ -66,8 +88,10 @@ abstract class GameObject extends Group implements Updatable{
   rotation = new Rotate();
   scale = new Scale();
   this.getTransforms().addAll(translation, rotation, scale);
+
  }
  void add(Node node){this.getChildren().add(node);}
+
 
 }
  class Pond extends GameObject {
@@ -132,6 +156,11 @@ abstract class GameObject extends Group implements Updatable{
 
  class Helicopter extends GameObject {
  //cricle and a line
+  private boolean onFuel = false;
+  private int ignition;
+  private Label fuel;
+  //positins
+  double pY;
   public Helicopter(){
    Circle base = new Circle(10);
    base.setFill(Color.YELLOW);
@@ -142,20 +171,46 @@ abstract class GameObject extends Group implements Updatable{
    line.setStrokeWidth(2);
    add(base);
    add(line);
+   ignition = 20000;
+   fuel = new Label();
+   int amountofFuel = 20000;
+   fuel.setText(""+amountofFuel);
+   flipLabel(fuel);
+   fuel.setTranslateX(-15);
+   fuel.setTranslateY(-(base.getRadius()*2));
+   fuel.setTextFill(Color.YELLOW);
+   add(fuel);
+   pY = this.getLayoutY();
   }
+
+  private void flipLabel(Label label){
+   label.setScaleY(-1);
+  }
+
+  public void startIgnition(){
+   onFuel = true;
+   ignition -=1;
+   fuel.setText(""+ignition);
+  }
+  public void stopIgnition(){
+   onFuel = false;
+  }
+
    @Override
    public void update() {
+    pY = pY * 1.25;
+    super.getTransforms().clear();
+    super.getTransforms().addAll(new Translate(this.getLayoutX(), pY));
 
    }
+
  }
 
  class PondAndCloud {
 
  }
 
- interface Updatable {
-  void update();
- }
+
 
  /**
   * Sets up all the keyboard events  handlers to invoke public methods
@@ -169,6 +224,8 @@ abstract class GameObject extends Group implements Updatable{
   int key(KeyCode k){
     return keysDown.contains(k) ? 1:0;
   }
+  private boolean start = false;
+  private boolean move = false;
 
   @Override
   public void start(Stage stage) throws Exception {
@@ -184,6 +241,12 @@ abstract class GameObject extends Group implements Updatable{
     public void handle(KeyEvent event) {
      keysDown.add(event.getCode());
      System.out.println("pressing on "+ event.getCode());
+     if(event.getCode() == KeyCode.I){
+      start();
+     }
+     else if(event.getCode() == KeyCode.W && start){
+      move();
+     }
     }
    });
 
@@ -199,11 +262,25 @@ abstract class GameObject extends Group implements Updatable{
    AnimationTimer loop = new AnimationTimer() {
     @Override
     public void handle(long now) {
+     gameWindow.startIgnition(start);
+     if(move()){
+      gameWindow.moving(move);
+     }
 
     }
    };
+   loop.start();
    stage.show();
   }
+
+  private boolean start(){
+   return start = !start;
+  }
+
+  private boolean move(){
+   return move = !move;
+  }
+
 
   public static void main(String[] args) {launch(args);}
 
