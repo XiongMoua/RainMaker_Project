@@ -52,8 +52,8 @@ class Game extends Pane {
   pond.setTranslateY(lY);
   cloud.setTranslateY(lY2);
   //helicopter stuff
-  helicopter.setTranslateX((500/2 - 75/2) + 75/2);
-  helicopter.setTranslateY(100 + (75/2));
+  helicopter.setLayoutX((500/2 - 75/2) + 75/2);
+  helicopter.setLayoutY(100 + (75/2));
   this.getChildren().addAll(helipad, pond,cloud, helicopter);
  }
 
@@ -64,14 +64,18 @@ class Game extends Pane {
 
   }
  }
- public void moving(boolean move){
-  if(move){
-   helicopter.setTranslateY(helicopter.getTranslateY() + 1.25);
+ public void moving(boolean move, boolean left, boolean right, boolean moveBack){
+//  System.out.println(move);
+
+  if(move) {
+   helicopter.increaseVelocity();
   }
+  if(moveBack){
+   helicopter.decreaseVelocity();
+  }
+  helicopter.update();
 
  }
-
-
 
 }
 
@@ -159,9 +163,15 @@ abstract class GameObject extends Group implements Updatable{
   private boolean onFuel = false;
   private int ignition;
   private Label fuel;
+  private double velocity = 0;
+  private double posX = 0;
+  private double posY = 0;
+  private double rotation = 0;
+
   //positins
-  double pY;
+  private Point2D position;
   public Helicopter(){
+
    Circle base = new Circle(10);
    base.setFill(Color.YELLOW);
    Line line = new Line();
@@ -180,7 +190,8 @@ abstract class GameObject extends Group implements Updatable{
    fuel.setTranslateY(-(base.getRadius()*2));
    fuel.setTextFill(Color.YELLOW);
    add(fuel);
-   pY = this.getLayoutY();
+
+
   }
 
   private void flipLabel(Label label){
@@ -192,16 +203,44 @@ abstract class GameObject extends Group implements Updatable{
    ignition -=1;
    fuel.setText(""+ignition);
   }
-  public void stopIgnition(){
-   onFuel = false;
-  }
-
    @Override
    public void update() {
-    pY = pY * 1.25;
-    super.getTransforms().clear();
-    super.getTransforms().addAll(new Translate(this.getLayoutX(), pY));
+   //Math.toRadians
+    posX = Math.sin(Math.toRadians(-rotation))*velocity;
+    posY = Math.cos(Math.toRadians(-rotation))*velocity;
 
+    System.out.println("Position x : " + posX);
+    System.out.println("Position y: " + posY);
+    System.out.println("Rotation: " + rotation);
+
+    super.getTransforms().clear();
+    super.getTransforms().addAll(
+//      new Rotate(this.getRotate() + rotation),
+      new Rotate(rotation),
+      new Translate(posX, posY)
+
+    );
+
+
+
+
+   }
+
+   public void increaseVelocity(){
+    velocity += 0.25;
+   }
+
+   public void decreaseVelocity(){
+   System.out.println("velocity: " + velocity);
+    velocity -= 0.25;
+   }
+
+   public void rotateLeft(){
+    rotation += 15;
+   }
+
+   public void rotateRight(){
+    rotation -= 15;
    }
 
  }
@@ -226,6 +265,9 @@ abstract class GameObject extends Group implements Updatable{
   }
   private boolean start = false;
   private boolean move = false;
+  private boolean moveBack = false;
+  private boolean rotateLeft = false;
+  private boolean rotateRight = false;
 
   @Override
   public void start(Stage stage) throws Exception {
@@ -244,9 +286,27 @@ abstract class GameObject extends Group implements Updatable{
      if(event.getCode() == KeyCode.I){
       start();
      }
-     else if(event.getCode() == KeyCode.W && start){
-      move();
+     if(event.getCode() == KeyCode.W && start){
+//      System.out.println("I is pressed and W is pressed");
+      moveTrue();
      }
+     if(event.getCode() == KeyCode.S && start){
+      moveBack();
+
+      System.out.println("Move Back: " + moveBack);
+     }
+     if(event.getCode() == KeyCode.A && (move || moveBack)){
+      rotateLeftTrue();
+      gameWindow.helicopter.rotateLeft();
+//      System.out.println("Rotating left " + rotateLeft);
+     }
+     if (event.getCode() == KeyCode.D && (move || moveBack)){
+      rotateRightTrue();
+      gameWindow.helicopter.rotateRight();
+
+     }
+
+
     }
    });
 
@@ -254,7 +314,10 @@ abstract class GameObject extends Group implements Updatable{
     @Override
     public void handle(KeyEvent event) {
      keysDown.remove(event.getCode());
-     System.out.println("removed "+ event.getCode());
+//     System.out.println("removed "+ event.getCode());
+     if(event.getCode() == KeyCode.W){
+
+     }
     }
    });
 
@@ -263,9 +326,11 @@ abstract class GameObject extends Group implements Updatable{
     @Override
     public void handle(long now) {
      gameWindow.startIgnition(start);
-     if(move()){
-      gameWindow.moving(move);
+//     System.out.println("Move = " + move);
+     if(move || moveBack){
+      gameWindow.moving(move, rotateLeft, rotateRight, moveBack);
      }
+
 
     }
    };
@@ -277,9 +342,17 @@ abstract class GameObject extends Group implements Updatable{
    return start = !start;
   }
 
-  private boolean move(){
-   return move = !move;
+  private void moveTrue(){
+   move = true;
+   moveBack = false;
   }
+  private void moveBack(){
+   move = false;
+   moveBack = true;
+  }
+
+  private void rotateLeftTrue() { rotateLeft = true; rotateRight = false;}
+  private void rotateRightTrue() { rotateLeft = false; rotateRight = true;}
 
 
   public static void main(String[] args) {launch(args);}
