@@ -39,7 +39,14 @@ class Game extends Pane {
  public void run(){
   HelicopterIntersections();
   ShowBorders(showBorders);
+  cloud.increaseSaturation();
  }
+ public void restartGame(){
+  pond.resetSpawn();
+  cloud.resetSpawn();
+  helicopter.resetSpawn();
+ }
+
  public void makeVisible(){
   showBorders =!showBorders;
   System.out.println(showBorders);
@@ -95,37 +102,56 @@ class Cloud extends GameObject{
  int CloudPercentage=0;
  int rgb1 = 255, rgb2 = 255, rgb3 = 255;
  Label percentage;
+ Random rand = new Random();
+ double radius, CloudRadius,upperBound,lowerBound,LocationX, LocationY;
+
  public Cloud(){
-  Random rand = new Random();
-  cloud = new Circle(rand.nextInt(max-min)+min);
-//  cloud.setFill(Color.WHITE);
-  cloud.setFill(Color.rgb(rgb1,rgb2,rgb3));
-  double CloudRadius = cloud.getRadius();
-  double upperBound=GameApp.YValueGameWindow()-CloudRadius;
-  double lowerBound=GameApp.YValueGameWindow()/2+CloudRadius;
-  double LocationX = rand.nextDouble(
-    ((GameApp.XValueGameWindow()-CloudRadius)-CloudRadius)+CloudRadius);
-  double LocationY = rand.nextDouble(upperBound - lowerBound) + lowerBound;
-  super.setLayoutX(LocationX);
-  super.setLayoutY(LocationY);
+  resetSpawn();
+ }
+
+ public void resetSpawn(){
+  radius=rand.nextInt(max-min)+min;
+  cloud = new Circle(radius);
+  cloud.setFill(Color.WHITE);
+  CloudRadius = cloud.getRadius();
   percentage = new Label();
-  percentage.setText(""+CloudPercentage);
+  percentage = new Label();
+  percentage.setText(""+CloudRadius);
   percentage.setTextFill(Color.BLACK);
   super.flipLabel(percentage);
+  upperBound=GameApp.YValueGameWindow()-CloudRadius;
+  lowerBound=GameApp.YValueGameWindow()/2+CloudRadius;
+  LocationX = rand.nextDouble( ((GameApp.XValueGameWindow()
+    -CloudRadius)-CloudRadius)+CloudRadius);
+  LocationY = rand.nextDouble(upperBound - lowerBound) + lowerBound;
+  super.setLayoutX(LocationX);
+  super.setLayoutY(LocationY);
   addToObject(cloud);
   addToObject(percentage);
+  System.out.println("Pond radius: " + radius);
+
  }
+
  private void increasePercentage(){
   if(CloudPercentage <= 99){
    CloudPercentage++;
    percentage.setText(""+CloudPercentage);
   }
  }
+
+ public void increaseSaturation(){
+  if(rgb1<255){
+   rgb1+=1;
+   rgb2+=1;
+   rgb3+=1;
+  }
+ }
+
  public void decreaseSaturation(){
   if(rgb1 >= 155){
-   rgb1 -=1;
-   rgb2-=1;
-   rgb3-=1;
+   rgb1 -=2;
+   rgb2-=2;
+   rgb3-=2;
   }
   increasePercentage();
   System.out.println(rgb1);
@@ -135,31 +161,37 @@ class Cloud extends GameObject{
 }
 class Pond extends GameObject{
  private Circle pond;
- double radius;
+ Random rand = new Random();
  int min=25;
  int max=35;
  double p;
  Label percentage;
+ double upperBound, lowerBound, LocationX, LocationY, PondRadius;
+ double radius;
+
  public Pond(){
-  Random rand = new Random();
-  radius = rand.nextInt(max-min)+min;
-  p=radius;
+  resetSpawn();
+ }
+ public void resetSpawn(){
+  radius=rand.nextInt(max-min)+min;
   pond = new Circle(radius);
   pond.setFill(Color.BLUE);
-  double PondRadius = pond.getRadius();
-  double upperBound=GameApp.YValueGameWindow()-PondRadius;
-  double lowerBound=GameApp.YValueGameWindow()/2+PondRadius;
-  double LocationX = rand.nextDouble( ((GameApp.XValueGameWindow()
-    -PondRadius)-PondRadius)+PondRadius);
-  double LocationY = rand.nextDouble(upperBound - lowerBound) + lowerBound;
-  super.setLayoutX(LocationX);
-  super.setLayoutY(LocationY);
+  PondRadius = pond.getRadius();
   percentage = new Label();
   percentage.setText(""+PondRadius);
   percentage.setTextFill(Color.WHITE);
   super.flipLabel(percentage);
+  upperBound=GameApp.YValueGameWindow()-PondRadius;
+  lowerBound=GameApp.YValueGameWindow()/2+PondRadius;
+  LocationX = rand.nextDouble( ((GameApp.XValueGameWindow()
+    -PondRadius)-PondRadius)+PondRadius);
+  LocationY = rand.nextDouble(upperBound - lowerBound) + lowerBound;
+  super.setLayoutX(LocationX);
+  super.setLayoutY(LocationY);
   addToObject(pond);
   addToObject(percentage);
+  System.out.println("Pond radius: " + radius);
+
  }
 
  public void area(){
@@ -224,7 +256,6 @@ class OffState extends HelicopterState{
  }
  @Override
  boolean intersect() {
-
   return false;
  }
 
@@ -284,8 +315,10 @@ class Helicopter extends GameObject{
   fuel.setTextFill(Color.YELLOW);
   addToObject(fuel);
  }
+ public void resetSpawn(){
 
 
+ }
  public void changeState(HelicopterState state){
   this.state = state;
  }
@@ -351,6 +384,9 @@ public class GameApp extends Application {
     }
     if(event.getCode() == KeyCode.SPACE && gameWindow.overCloud) {
      gameWindow.decreaseSaturation();
+    }
+    if(event.getCode() == KeyCode.R){
+     gameWindow.restartGame();
     }
    }
   });
