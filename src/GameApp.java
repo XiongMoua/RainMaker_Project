@@ -1,18 +1,17 @@
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.event.EventHandler;
-import javafx.geometry.Insets;
+import javafx.geometry.BoundingBox;
+import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
-import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Background;
-import javafx.scene.layout.BackgroundFill;
-import javafx.scene.layout.CornerRadii;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
@@ -21,343 +20,285 @@ import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Scale;
 import javafx.scene.transform.Translate;
 import javafx.stage.Stage;
-import java.util.HashSet;
 import java.util.Random;
-import java.util.Set;
-
-interface Updatable {
+interface Updateable{
  void update();
 }
-
-/**
- * game logic and object construction happens in this class
- * the layout of the objects will also be in here?
- */
 class Game extends Pane {
- //take all the objects needed for the game
- Helipad helipad = new Helipad();
- Pond pond = new Pond();
- Random rand =new Random();
- Cloud cloud = new Cloud();
- Helicopter helicopter = new Helicopter();
- public Game() {
+ private Helicopter helicopter = new Helicopter();
+ private Helipad helipad = new Helipad();
+ private Cloud cloud = new Cloud();
+ private Pond pond = new Pond();
+ public Game(){
+  this.setBackground(Background.fill(Color.BLACK));
   this.setScaleY(-1);
-  this.setBackground(new Background(new BackgroundFill(Color.BLACK,new CornerRadii(0), Insets.EMPTY)));
-  //translate the helipad
-  helipad.setTranslateX(500/2 - 75/2);
-  helipad.setTranslateY(100);
-  //pond stuff ((GameApp.size.getY() - GameApp.size.getY() / 2) + GameApp.size.getY() / 2)
-  double lY = rand.nextDouble( GameApp.size.getY() - GameApp.size.getY()/2) + GameApp.size.getY()/2;
-  double lY2 = rand.nextDouble( GameApp.size.getY() - GameApp.size.getY()/2) + GameApp.size.getY()/2;
-  pond.setTranslateY(lY);
-  cloud.setTranslateY(lY2);
-  //helicopter stuff
-  helicopter.setLayoutX((500/2 - 75/2) + 75/2);
-  helicopter.setLayoutY(100 + (75/2));
-  this.getChildren().addAll(helipad, pond,cloud, helicopter);
+  this.getChildren().addAll(pond,cloud,helipad,helicopter);
  }
-
- public void startIgnition(boolean start){
+ public void HelicopterStart(boolean start){
   if(start){
-   helicopter.startIgnition();
+   helicopter.changeState(new RunningState(helicopter));
   }else{
-
+   helicopter.changeState(new OffState(helicopter));
   }
  }
- public void moving(boolean move, boolean left, boolean right, boolean moveBack){
-//  System.out.println(move);
-
-  if(move) {
-   helicopter.increaseVelocity();
-  }
-  if(moveBack){
-   helicopter.decreaseVelocity();
-  }
-  helicopter.update();
+ public void intersect(){
+  System.out.println("Intersect: "+helicopter.intersect(helipad.bound));
 
  }
+ public void increaseHelicopterVelocity(){
+  helicopter.increaseVelocity();
+ }
+ public void decreaseHelicopterVelocity(){
+  helicopter.decreaseVelocity();
+ }
 
+ public void rotateHelicopterLeft(){
+  helicopter.rotateLeft();
+ }
+ public void rotateHelicopterRight(){
+  helicopter.rotateRight();
+ }
 }
-
-/**
- * No movement in the game object class
- * Any behaviour or state will be setup in this class
- */
-abstract class GameObject extends Group implements Updatable{
- private Translate translation;
+class Cloud extends GameObject{
+ private Circle cloud;
+ int min = 25;
+ int max = 35;
+ public Cloud(){
+  Random rand = new Random();
+  cloud = new Circle(rand.nextInt(max-min)+min);
+  cloud.setFill(Color.WHITE);
+  double CloudRadius = cloud.getRadius();
+  double upperBound=GameApp.YValueGameWindow()-CloudRadius;
+  double lowerBound=GameApp.YValueGameWindow()/2+CloudRadius;
+  double LocationX = rand.nextDouble(
+    (GameApp.XValueGameWindow()-CloudRadius)+CloudRadius);
+  double LocationY = rand.nextDouble(upperBound - lowerBound) + lowerBound;
+  super.setLayoutX(LocationX);
+  super.setLayoutY(LocationY);
+  addToObject(cloud);
+ }
+}
+class Pond extends GameObject{
+ private Circle pond;
+ int min=25;
+ int max=50;
+ public Pond(){
+  Random rand = new Random();
+  pond = new Circle(rand.nextInt(max-min)+min);
+  pond.setFill(Color.BLUE);
+  double PondRadius = pond.getRadius();
+  double upperBound=GameApp.YValueGameWindow()-PondRadius;
+  double lowerBound=GameApp.YValueGameWindow()/2+PondRadius;
+  double LocationX = rand.nextDouble( ((GameApp.XValueGameWindow()
+    -PondRadius)-PondRadius)+PondRadius);
+  double LocationY = rand.nextDouble(upperBound - lowerBound) + lowerBound;
+  super.setLayoutX(LocationX);
+  super.setLayoutY(LocationY);
+  addToObject(pond);
+ }
+}
+abstract class GameObject extends StackPane {
+ private Translate translate;
  private Rotate rotation;
  private Scale scale;
- public GameObject() {
-  translation = new Translate();
+ public GameObject(){
+  translate = new Translate();
   rotation = new Rotate();
   scale = new Scale();
-  this.getTransforms().addAll(translation, rotation, scale);
-
+  this.getTransforms().addAll(translate, rotation, scale);
  }
- void add(Node node){this.getChildren().add(node);}
-
+ public void addToObject(Node node){this.getChildren().add(node);}
 
 }
- class Pond extends GameObject {
-  public Pond(){
-   Random rand = new Random();
-   //random = (max - min) + min;
-   Circle pond = new Circle(25);
-   pond.setFill(Color.BLUE);
-   double cX = pond.getRadius();
-   double lX = rand.nextDouble( (GameApp.size.getX() - (int)cX + cX));
-
-   pond.setTranslateX(lX);
-   add(pond);
-  }
-
-  @Override
-  public void update() {
-
-  }
+class Helipad extends GameObject{
+ private Rectangle base;
+ private Circle circle;
+ Bounds bound;
+ public Helipad(){
+  base = new Rectangle(75,75);
+  circle = new Circle(25);
+  base.setFill(Color.GRAY);
+  circle.setFill(Color.GRAY);
+  circle.setStroke(Color.WHITE);
+  super.addToObject(base);
+  super.addToObject(circle);
+  super.setLayoutX(GameApp.XValueGameWindow()/2 - base.getWidth()/2);
+  super.setLayoutY(GameApp.YValueGameWindow()/10);
+  bound = this.getBoundsInParent();
+ }
+}
+abstract class HelicopterState implements Updateable{
+ protected Helicopter helicopter;
+ public HelicopterState(Helicopter helicopter){
+  this.helicopter = helicopter;
+ }
+ abstract void decreaseFuel();
+ abstract boolean intersect();
+}
+class OffState extends HelicopterState{
+ public OffState(Helicopter helicopter) {
+  super(helicopter);
+  update();
+ }
+ @Override
+ void decreaseFuel() {
 
  }
 
- class Cloud extends GameObject {
-  public Cloud(){
-   Random rand = new Random();
-
-   Circle cloud = new Circle(50);
-   cloud.setFill(Color.WHITE);
-   double cX = cloud.getRadius();
-   double lX = rand.nextDouble( (GameApp.size.getX() - (int)cX)) + cX;
-   cloud.setTranslateX(lX);
-   add(cloud);
-
- }
-  @Override
-  public void update() {
-
-  }
-
+ @Override
+ boolean intersect() {
+  return false;
  }
 
- class Helipad extends GameObject {
-  public Helipad(){
-   Rectangle base = new Rectangle(75,75);
-   Circle circle = new Circle(25);
-   circle.setTranslateX(75/2);
-   circle.setTranslateY(75/2);
-   base.setFill(Color.GRAY);
-   base.setStroke(Color.WHITE);
-   circle.setFill(Color.GRAY);
-   circle.setStroke(Color.WHITE);
-   add(base);
-   add(circle);
-  }
-
-  @Override
-  public void update() {
-
-  }
+ @Override
+ public void update() {
 
  }
+}
+class RunningState extends HelicopterState{
+ public RunningState(Helicopter helicopter) {
+  super(helicopter);
+  decreaseFuel();
+  update();
+ }
+ @Override
+ void decreaseFuel() {
+  helicopter.RunningOnFuel();
+ }
 
- class Helicopter extends GameObject {
- //cricle and a line
-  private boolean onFuel = false;
-  private int ignition;
-  private Label fuel;
-  private double velocity = 0;
-  private double posX = 0;
-  private double posY = 0;
-  private double rotation = 0;
+ @Override
+ boolean intersect() {
+  return false;
+ }
 
-  //positins
-  private Point2D position;
-  public Helicopter(){
+ @Override
+ public void update() {
+  super.helicopter.setRotate(super.helicopter.rotation);
+  super.helicopter.setLayoutX(super.helicopter.updateLocationX());
+  super.helicopter.setLayoutY(super.helicopter.updateLocationY());
+ }
+}
+class Helicopter extends GameObject{
+ private int ignition;
+ private HelicopterState state;
+ private Label fuel;
+ private double velocity = 0;
+ private double posX = 0;
+ private double posY = 0;
+ public double rotation = 0;
+ private Helipad helipad = new Helipad();
+ Bounds bound;
+ public Helicopter(){
+  Circle base = new Circle(10);
+  base.setFill(Color.YELLOW);
+  Line line = new Line();
+  line.setStartY(0);
+  line.setEndY(35);
+  line.setStroke(Color.YELLOW);
+  line.setStrokeWidth(2);
+  line.setTranslateY(10);
+  addToObject(base);
+  addToObject(line);
+  super.setLayoutY(GameApp.YValueGameWindow()/8);
+  super.setLayoutX(GameApp.XValueGameWindow()/2-16.5);
+  ignition = 25000;
+  fuel = new Label();
+  fuel.setText(""+ignition);
+  flipLabel(fuel);
+  fuel.setTranslateY(-(base.getRadius()*2));
+  fuel.setTextFill(Color.YELLOW);
+  addToObject(fuel);
+  bound = this.getBoundsInParent();
+ }
+ private void flipLabel(Label label){
+  label.setScaleY(-1);
+ }
+ public boolean intersect(Bounds bound){
+  return this.bound.intersects(bound);
+ }
 
-   Circle base = new Circle(10);
-   base.setFill(Color.YELLOW);
-   Line line = new Line();
-   line.setStartY(0);
-   line.setEndY(35);
-   line.setStroke(Color.YELLOW);
-   line.setStrokeWidth(2);
-   add(base);
-   add(line);
-   ignition = 20000;
-   fuel = new Label();
-   int amountofFuel = 20000;
-   fuel.setText(""+amountofFuel);
-   flipLabel(fuel);
-   fuel.setTranslateX(-15);
-   fuel.setTranslateY(-(base.getRadius()*2));
-   fuel.setTextFill(Color.YELLOW);
-   add(fuel);
-
-
+ public void changeState(HelicopterState state){
+  this.state = state;
+ }
+ public void rotateLeft(){
+  rotation += 15;
+ }
+ public void rotateRight(){
+  rotation -= 15;
+ }
+ public double updateLocationX(){
+  posX = Math.sin(Math.toRadians(-rotation))*velocity;
+  return super.getLayoutX()+posX;
+ }
+ public double updateLocationY(){
+  posY = Math.cos(Math.toRadians(-rotation))*velocity;
+  return super.getLayoutY()+posY;
+ }
+ public void increaseVelocity(){
+  if(velocity <= 10){
+   velocity+=0.1;
   }
-
-  private void flipLabel(Label label){
-   label.setScaleY(-1);
+ }
+ public void decreaseVelocity(){
+  if(velocity >= -2){
+   velocity -= 0.1;
   }
-
-  public void startIgnition(){
-   onFuel = true;
-   ignition -=1;
-   fuel.setText(""+ignition);
-  }
+ }
+ public void RunningOnFuel(){
+  ignition -= 1;
+  fuel.setText(""+ignition);
+ }
+}
+public class GameApp extends Application {
+ boolean heliEngineOn = false;
+ private static Point2D size = new Point2D(500, 800);
+ @Override
+ public void start(Stage stage) throws Exception {
+  Game gameWindow = new Game();
+  Scene scene = new Scene(gameWindow, size.getX(), size.getY());
+  stage.setTitle("RainMaker");
+  stage.setResizable(false);
+  stage.setScene(scene);
+  scene.setOnKeyPressed(new EventHandler<KeyEvent>() {
    @Override
-   public void update() {
-   //Math.toRadians
-    posX = Math.sin(Math.toRadians(-rotation))*velocity;
-    posY = Math.cos(Math.toRadians(-rotation))*velocity;
-
-    System.out.println("Position x : " + posX);
-    System.out.println("Position y: " + posY);
-    System.out.println("Rotation: " + rotation);
-
-    super.getTransforms().clear();
-    super.getTransforms().addAll(
-//      new Rotate(this.getRotate() + rotation),
-      new Rotate(rotation),
-      new Translate(posX, posY)
-
-    );
-
-
-
-
-   }
-
-   public void increaseVelocity(){
-    velocity += 0.25;
-   }
-
-   public void decreaseVelocity(){
-   System.out.println("velocity: " + velocity);
-    velocity -= 0.25;
-   }
-
-   public void rotateLeft(){
-    rotation += 15;
-   }
-
-   public void rotateRight(){
-    rotation -= 15;
-   }
-
- }
-
- class PondAndCloud {
-
- }
-
-
-
- /**
-  * Sets up all the keyboard events  handlers to invoke public methods
-  * in the game
-  */
- public class GameApp extends Application {
-  static Point2D size = new Point2D(500, 800);
-  //setting up the keys so that it won't keep pressing when a key is
-  //pressed down
-  Set<KeyCode> keysDown= new HashSet<>();
-  int key(KeyCode k){
-    return keysDown.contains(k) ? 1:0;
-  }
-  private boolean start = false;
-  private boolean move = false;
-  private boolean moveBack = false;
-  private boolean rotateLeft = false;
-  private boolean rotateRight = false;
-
-  @Override
-  public void start(Stage stage) throws Exception {
-   Game gameWindow = new Game();
-   Scene scene = new Scene(gameWindow, size.getX(), size.getY());
-   scene.setFill(Color.BLACK);
-   stage.setTitle("RainMaker");
-   stage.setScene(scene);
-
-   //setup the keys pressed when inside of the scene
-   scene.setOnKeyPressed(new EventHandler<KeyEvent>() {
-    @Override
-    public void handle(KeyEvent event) {
-     keysDown.add(event.getCode());
-     System.out.println("pressing on "+ event.getCode());
-     if(event.getCode() == KeyCode.I){
-      start();
-     }
-     if(event.getCode() == KeyCode.W && start){
-//      System.out.println("I is pressed and W is pressed");
-      moveTrue();
-     }
-     if(event.getCode() == KeyCode.S && start){
-      moveBack();
-
-      System.out.println("Move Back: " + moveBack);
-     }
-     if(event.getCode() == KeyCode.A && (move || moveBack)){
-      rotateLeftTrue();
-      gameWindow.helicopter.rotateLeft();
-//      System.out.println("Rotating left " + rotateLeft);
-     }
-     if (event.getCode() == KeyCode.D && (move || moveBack)){
-      rotateRightTrue();
-      gameWindow.helicopter.rotateRight();
-
-     }
-
+   public void handle(KeyEvent event) {
+    if(event.getCode() == KeyCode.I){
+     startEngine();
+    }
+    if(event.getCode() == KeyCode.W && heliEngineOn){
+     gameWindow.increaseHelicopterVelocity();
+    }
+    if(event.getCode() == KeyCode.D && heliEngineOn){
+     gameWindow.rotateHelicopterRight();
+    }
+    if(event.getCode() == KeyCode.A && heliEngineOn){
+     gameWindow.rotateHelicopterLeft();
+    }
+    if(event.getCode() == KeyCode.S && heliEngineOn){
+     gameWindow.decreaseHelicopterVelocity();
+    }
+    if (event.getCode() == KeyCode.R) {
 
     }
-   });
-
-   scene.setOnKeyReleased(new EventHandler<KeyEvent>() {
-    @Override
-    public void handle(KeyEvent event) {
-     keysDown.remove(event.getCode());
-//     System.out.println("removed "+ event.getCode());
-     if(event.getCode() == KeyCode.W){
-
-     }
-    }
-   });
-
-   //animation starter
-   AnimationTimer loop = new AnimationTimer() {
-    @Override
-    public void handle(long now) {
-     gameWindow.startIgnition(start);
-//     System.out.println("Move = " + move);
-     if(move || moveBack){
-      gameWindow.moving(move, rotateLeft, rotateRight, moveBack);
-     }
-
-
-    }
-   };
-   loop.start();
-   stage.show();
-  }
-
-  private boolean start(){
-   return start = !start;
-  }
-
-  private void moveTrue(){
-   move = true;
-   moveBack = false;
-  }
-  private void moveBack(){
-   move = false;
-   moveBack = true;
-  }
-
-  private void rotateLeftTrue() { rotateLeft = true; rotateRight = false;}
-  private void rotateRightTrue() { rotateLeft = false; rotateRight = true;}
-
-
-  public static void main(String[] args) {launch(args);}
-
+   }
+  });
+  AnimationTimer loop = new AnimationTimer() {
+   @Override
+   public void handle(long now) {
+    gameWindow.HelicopterStart(heliEngineOn);
+    gameWindow.intersect();
+   }
+  };
+  loop.start();
+  stage.show();
  }
-
-
-
+ private void startEngine(){
+  heliEngineOn = !heliEngineOn;
+ }
+ public static double XValueGameWindow(){
+  return size.getX();
+ }
+ public static double YValueGameWindow(){
+  return size.getY();
+ }
+}
