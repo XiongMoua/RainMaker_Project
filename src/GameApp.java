@@ -1,8 +1,6 @@
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.event.EventHandler;
-import javafx.geometry.BoundingBox;
-import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -10,6 +8,7 @@ import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Background;
+import javafx.scene.layout.Border;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
@@ -29,21 +28,51 @@ class Game extends Pane {
  private Helipad helipad = new Helipad();
  private Cloud cloud = new Cloud();
  private Pond pond = new Pond();
+ boolean OnHelipad = false;
+ boolean overCloud = false;
+ boolean showBorders = false;
  public Game(){
   this.setBackground(Background.fill(Color.BLACK));
   this.setScaleY(-1);
   this.getChildren().addAll(pond,cloud,helipad,helicopter);
  }
- public void HelicopterStart(boolean start){
-  if(start){
-   helicopter.changeState(new RunningState(helicopter));
-  }else{
-   helicopter.changeState(new OffState(helicopter));
+ public void run(){
+  HelicopterIntersections();
+  ShowBorders(showBorders);
+ }
+ public void makeVisible(){
+  showBorders =!showBorders;
+  System.out.println(showBorders);
+ }
+ private void ShowBorders(boolean show){
+  if(show){
+   helicopter.setBorder(Border.stroke(Color.WHITE));
+   helipad.setBorder(Border.stroke(Color.WHITE));
+   pond.setBorder(Border.stroke(Color.WHITE));
+   cloud.setBorder(Border.stroke(Color.WHITE));
+  }
+  else if(show==false){
+   helicopter.setBorder(Border.stroke(Color.TRANSPARENT));
+   helipad.setBorder(Border.stroke(Color.TRANSPARENT));
+   pond.setBorder(Border.stroke(Color.TRANSPARENT));
+   cloud.setBorder(Border.stroke(Color.TRANSPARENT));
+
   }
  }
- public void intersect(){
-  System.out.println("Intersect: "+helicopter.intersect(helipad.bound));
 
+ public void decreaseSaturation(){
+  cloud.decreaseSaturation();
+  if(cloud.CloudPercentage>30){
+   pond.area();
+  }
+ }
+
+ public void HelicopterIntersections(){
+  OnHelipad = helicopter.getBoundsInParent().intersects(helipad.getBoundsInParent());
+  overCloud = helicopter.getBoundsInParent().intersects(cloud.getBoundsInParent());
+  if(GameApp.EngineState()){
+   helicopter.changeState(new RunningState(helicopter));
+  }
  }
  public void increaseHelicopterVelocity(){
   helicopter.increaseVelocity();
@@ -61,30 +90,61 @@ class Game extends Pane {
 }
 class Cloud extends GameObject{
  private Circle cloud;
- int min = 25;
- int max = 35;
+ int min = 35;
+ int max = 50;
+ int CloudPercentage=0;
+ int rgb1 = 255, rgb2 = 255, rgb3 = 255;
+ Label percentage;
  public Cloud(){
   Random rand = new Random();
   cloud = new Circle(rand.nextInt(max-min)+min);
-  cloud.setFill(Color.WHITE);
+//  cloud.setFill(Color.WHITE);
+  cloud.setFill(Color.rgb(rgb1,rgb2,rgb3));
   double CloudRadius = cloud.getRadius();
   double upperBound=GameApp.YValueGameWindow()-CloudRadius;
   double lowerBound=GameApp.YValueGameWindow()/2+CloudRadius;
   double LocationX = rand.nextDouble(
-    (GameApp.XValueGameWindow()-CloudRadius)+CloudRadius);
+    ((GameApp.XValueGameWindow()-CloudRadius)-CloudRadius)+CloudRadius);
   double LocationY = rand.nextDouble(upperBound - lowerBound) + lowerBound;
   super.setLayoutX(LocationX);
   super.setLayoutY(LocationY);
+  percentage = new Label();
+  percentage.setText(""+CloudPercentage);
+  percentage.setTextFill(Color.BLACK);
+  super.flipLabel(percentage);
   addToObject(cloud);
+  addToObject(percentage);
  }
+ private void increasePercentage(){
+  if(CloudPercentage <= 99){
+   CloudPercentage++;
+   percentage.setText(""+CloudPercentage);
+  }
+ }
+ public void decreaseSaturation(){
+  if(rgb1 >= 155){
+   rgb1 -=1;
+   rgb2-=1;
+   rgb3-=1;
+  }
+  increasePercentage();
+  System.out.println(rgb1);
+  cloud.setFill(Color.rgb(rgb1,rgb2,rgb3));
+ }
+
 }
 class Pond extends GameObject{
  private Circle pond;
+ double radius;
  int min=25;
- int max=50;
+ int max=35;
+ double p;
+ Label percentage;
  public Pond(){
   Random rand = new Random();
-  pond = new Circle(rand.nextInt(max-min)+min);
+  radius = rand.nextInt(max-min)+min;
+  p=radius;
+  pond = new Circle(radius);
   pond.setFill(Color.BLUE);
   double PondRadius = pond.getRadius();
   double upperBound=GameApp.YValueGameWindow()-PondRadius;
@@ -94,7 +154,24 @@ class Pond extends GameObject{
   double LocationY = rand.nextDouble(upperBound - lowerBound) + lowerBound;
   super.setLayoutX(LocationX);
   super.setLayoutY(LocationY);
+  percentage = new Label();
+  percentage.setText(""+PondRadius);
+  percentage.setTextFill(Color.WHITE);
+  super.flipLabel(percentage);
   addToObject(pond);
+  addToObject(percentage);
+ }
+
+ public void area(){
+  Scale test = new Scale();
+  double x = 1;
+  double y=1;
+  test.setX(x+=0.01);
+  test.setY(y+=0.01);
+  if(p<=99){
+   pond.getTransforms().add(test);
+   percentage.setText(""+(p+=1));
+  }
  }
 }
 abstract class GameObject extends StackPane {
@@ -108,12 +185,14 @@ abstract class GameObject extends StackPane {
   this.getTransforms().addAll(translate, rotation, scale);
  }
  public void addToObject(Node node){this.getChildren().add(node);}
+ public void flipLabel(Label label){
+  label.setScaleY(-1);
+ }
 
 }
 class Helipad extends GameObject{
  private Rectangle base;
  private Circle circle;
- Bounds bound;
  public Helipad(){
   base = new Rectangle(75,75);
   circle = new Circle(25);
@@ -124,7 +203,6 @@ class Helipad extends GameObject{
   super.addToObject(circle);
   super.setLayoutX(GameApp.XValueGameWindow()/2 - base.getWidth()/2);
   super.setLayoutY(GameApp.YValueGameWindow()/10);
-  bound = this.getBoundsInParent();
  }
 }
 abstract class HelicopterState implements Updateable{
@@ -144,9 +222,9 @@ class OffState extends HelicopterState{
  void decreaseFuel() {
 
  }
-
  @Override
  boolean intersect() {
+
   return false;
  }
 
@@ -165,12 +243,10 @@ class RunningState extends HelicopterState{
  void decreaseFuel() {
   helicopter.RunningOnFuel();
  }
-
  @Override
  boolean intersect() {
   return false;
  }
-
  @Override
  public void update() {
   super.helicopter.setRotate(super.helicopter.rotation);
@@ -187,7 +263,6 @@ class Helicopter extends GameObject{
  private double posY = 0;
  public double rotation = 0;
  private Helipad helipad = new Helipad();
- Bounds bound;
  public Helicopter(){
   Circle base = new Circle(10);
   base.setFill(Color.YELLOW);
@@ -208,14 +283,8 @@ class Helicopter extends GameObject{
   fuel.setTranslateY(-(base.getRadius()*2));
   fuel.setTextFill(Color.YELLOW);
   addToObject(fuel);
-  bound = this.getBoundsInParent();
  }
- private void flipLabel(Label label){
-  label.setScaleY(-1);
- }
- public boolean intersect(Bounds bound){
-  return this.bound.intersects(bound);
- }
+
 
  public void changeState(HelicopterState state){
   this.state = state;
@@ -250,7 +319,7 @@ class Helicopter extends GameObject{
  }
 }
 public class GameApp extends Application {
- boolean heliEngineOn = false;
+ private static boolean heliEngineOn = false;
  private static Point2D size = new Point2D(500, 800);
  @Override
  public void start(Stage stage) throws Exception {
@@ -262,7 +331,7 @@ public class GameApp extends Application {
   scene.setOnKeyPressed(new EventHandler<KeyEvent>() {
    @Override
    public void handle(KeyEvent event) {
-    if(event.getCode() == KeyCode.I){
+    if(event.getCode() == KeyCode.I && gameWindow.OnHelipad){
      startEngine();
     }
     if(event.getCode() == KeyCode.W && heliEngineOn){
@@ -277,16 +346,18 @@ public class GameApp extends Application {
     if(event.getCode() == KeyCode.S && heliEngineOn){
      gameWindow.decreaseHelicopterVelocity();
     }
-    if (event.getCode() == KeyCode.R) {
-
+    if (event.getCode() == KeyCode.B) {
+     gameWindow.makeVisible();
+    }
+    if(event.getCode() == KeyCode.SPACE && gameWindow.overCloud) {
+     gameWindow.decreaseSaturation();
     }
    }
   });
   AnimationTimer loop = new AnimationTimer() {
    @Override
    public void handle(long now) {
-    gameWindow.HelicopterStart(heliEngineOn);
-    gameWindow.intersect();
+    gameWindow.run();
    }
   };
   loop.start();
@@ -295,6 +366,10 @@ public class GameApp extends Application {
  private void startEngine(){
   heliEngineOn = !heliEngineOn;
  }
+ public static boolean EngineState(){
+  return heliEngineOn;
+ }
+
  public static double XValueGameWindow(){
   return size.getX();
  }
