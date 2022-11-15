@@ -39,14 +39,14 @@ class Game extends Pane {
  public void run(){
   HelicopterIntersections();
   ShowBorders(showBorders);
-  cloud.increaseSaturation();
+  cloud.Saturation();
+  cloud.notSeeded();
  }
  public void restartGame(){
   pond.resetSpawn();
   cloud.resetSpawn();
   helicopter.resetSpawn();
  }
-
  public void makeVisible(){
   showBorders =!showBorders;
   System.out.println(showBorders);
@@ -66,12 +66,9 @@ class Game extends Pane {
 
   }
  }
-
- public void decreaseSaturation(){
-  cloud.decreaseSaturation();
-  if(cloud.CloudPercentage>30){
-   pond.area();
-  }
+ public void seedingCloud(){
+  cloud.beingSeeded();
+  pond.area();
  }
 
  public void HelicopterIntersections(){
@@ -87,7 +84,6 @@ class Game extends Pane {
  public void decreaseHelicopterVelocity(){
   helicopter.decreaseVelocity();
  }
-
  public void rotateHelicopterLeft(){
   helicopter.rotateLeft();
  }
@@ -103,20 +99,18 @@ class Cloud extends GameObject{
  int rgb1 = 255, rgb2 = 255, rgb3 = 255;
  Label percentage;
  Random rand = new Random();
+ boolean seeded = false;
  double radius, CloudRadius,upperBound,lowerBound,LocationX, LocationY;
-
  public Cloud(){
   resetSpawn();
  }
-
  public void resetSpawn(){
   radius=rand.nextInt(max-min)+min;
   cloud = new Circle(radius);
   cloud.setFill(Color.WHITE);
   CloudRadius = cloud.getRadius();
   percentage = new Label();
-  percentage = new Label();
-  percentage.setText(""+CloudRadius);
+  percentage.setText(""+CloudPercentage);
   percentage.setTextFill(Color.BLACK);
   super.flipLabel(percentage);
   upperBound=GameApp.YValueGameWindow()-CloudRadius;
@@ -129,34 +123,50 @@ class Cloud extends GameObject{
   addToObject(cloud);
   addToObject(percentage);
   System.out.println("Pond radius: " + radius);
-
  }
-
- private void increasePercentage(){
-  if(CloudPercentage <= 99){
-   CloudPercentage++;
-   percentage.setText(""+CloudPercentage);
+ public void Saturation(){
+  if(seeded){
+   System.out.println("Being seeded");
+   decreaseSaturation();
+  }
+  if(seeded == false){
+   System.out.println("Not being seeded");
+   increaseSaturation();
   }
  }
-
- public void increaseSaturation(){
-  if(rgb1<255){
-   rgb1+=1;
-   rgb2+=1;
-   rgb3+=1;
-  }
- }
-
  public void decreaseSaturation(){
-  if(rgb1 >= 155){
-   rgb1 -=2;
-   rgb2-=2;
-   rgb3-=2;
+  if(rgb1 >=155){
+   rgb1--;
+   rgb2--;
+   rgb3--;
+   cloud.setFill(Color.rgb(rgb1, rgb2, rgb3));
   }
-  increasePercentage();
-  System.out.println(rgb1);
-  cloud.setFill(Color.rgb(rgb1,rgb2,rgb3));
+  if(CloudPercentage<=100){
+   System.out.println(CloudPercentage);
+   percentage.setText(""+(CloudPercentage++));
+  }
  }
+ public void  increaseSaturation(){
+  if(rgb1 <255){
+   rgb1++;
+   rgb2++;
+   rgb3++;
+   cloud.setFill(Color.rgb(rgb1, rgb2, rgb3));
+  }
+  if(CloudPercentage>0){
+   System.out.println(CloudPercentage);
+   percentage.setText(""+(CloudPercentage--));
+  }
+ }
+ public void beingSeeded(){
+  seeded=true;
+ }
+ public void notSeeded(){
+  seeded = false;
+ }
+
+
+
 
 }
 class Pond extends GameObject{
@@ -166,9 +176,9 @@ class Pond extends GameObject{
  int max=35;
  double p;
  Label percentage;
- double upperBound, lowerBound, LocationX, LocationY, PondRadius;
+ double upperBound, lowerBound, LocationX,
+   LocationY, PondRadius, PondPercentage;
  double radius;
-
  public Pond(){
   resetSpawn();
  }
@@ -177,8 +187,9 @@ class Pond extends GameObject{
   pond = new Circle(radius);
   pond.setFill(Color.BLUE);
   PondRadius = pond.getRadius();
+  PondPercentage=PondRadius;
   percentage = new Label();
-  percentage.setText(""+PondRadius);
+  percentage.setText(""+PondPercentage);
   percentage.setTextFill(Color.WHITE);
   super.flipLabel(percentage);
   upperBound=GameApp.YValueGameWindow()-PondRadius;
@@ -193,16 +204,15 @@ class Pond extends GameObject{
   System.out.println("Pond radius: " + radius);
 
  }
-
  public void area(){
   Scale test = new Scale();
   double x = 1;
   double y=1;
   test.setX(x+=0.01);
   test.setY(y+=0.01);
-  if(p<=99){
+  if(PondPercentage<=99){
    pond.getTransforms().add(test);
-   percentage.setText(""+(p+=1));
+   percentage.setText(""+(PondPercentage+=1));
   }
  }
 }
@@ -383,7 +393,7 @@ public class GameApp extends Application {
      gameWindow.makeVisible();
     }
     if(event.getCode() == KeyCode.SPACE && gameWindow.overCloud) {
-     gameWindow.decreaseSaturation();
+     gameWindow.seedingCloud();
     }
     if(event.getCode() == KeyCode.R){
      gameWindow.restartGame();
