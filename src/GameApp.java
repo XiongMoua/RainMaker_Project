@@ -21,9 +21,7 @@ import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Scale;
 import javafx.scene.transform.Translate;
 import javafx.stage.Stage;
-
 import java.util.Random;
-
 /*
 
 Class notes: Use random.nextGaussian
@@ -51,13 +49,20 @@ class Game extends Pane{
   ShowBorders(showBorders);
   increaseSaturation();
   lose();
+  win();
  }
  public double HelicopterSpeed(){
   return helicopter.returnVelocity();
  }
  public void lose(){
   if(helicopter.returnFuel() ==0){
-   GameApp.showAlert();
+   GameApp.showAlertLost();
+  }
+ }
+ public void win(){
+  if(pond.PondPercentage == 100 && helicopter.returnFuel() > 0 && GameApp.EngineState() == false){
+   System.out.println("You won");
+   GameApp.showAlertWin();
   }
  }
  public void increaseSaturation(){
@@ -74,6 +79,7 @@ class Game extends Pane{
   pond.resetSpawn();
   cloud.resetSpawn();
   helicopter.resetSpawn();
+  helicopter.resetVelocity();
  }
  public void makeVisible(){
   showBorders =!showBorders;
@@ -94,14 +100,12 @@ class Game extends Pane{
 
   }
  }
-
  public void HelicopterIntersections(){
   OnHelipad = helicopter.getBoundsInParent().intersects(helipad.getBoundsInParent());
   overCloud = helicopter.getBoundsInParent().intersects(cloud.getBoundsInParent());
   if(GameApp.EngineState()){
    helicopter.changeState(new RunningState(helicopter));
   }
-
  }
  public void increaseHelicopterVelocity(){
   helicopter.increaseVelocity();
@@ -363,10 +367,14 @@ class Helicopter extends GameObject{
   super.setRotate(rotation);
   ignition = 25000;
   fuel.setText(""+ignition);
-  velocity=0;
+  resetVelocity();
   onFuel=false;
 
  }
+ public void resetVelocity(){
+  velocity = 0;
+ }
+
  public double returnVelocity(){
   System.out.println(velocity);
   return velocity;
@@ -401,7 +409,7 @@ class Helicopter extends GameObject{
  public void RunningOnFuel(){
   if(GameApp.EngineState()){
    if(ignition>0){
-    ignition -= 1000;
+    ignition -= 5;
    }
    fuel.setText(""+ignition);
   }
@@ -411,9 +419,9 @@ class Helicopter extends GameObject{
 public class GameApp extends Application {
  private static boolean heliEngineOn = false;
  private static Point2D size = new Point2D(500, 800);
- static Alert alert;
- static Stage alertStage;
- AnimationTimer loop;
+ private static Alert LostAlert;
+ private static Alert WinAlert;
+ private static AnimationTimer loop;
  @Override
  public void start(Stage stage) throws Exception {
   Game gameWindow = new Game();
@@ -421,25 +429,49 @@ public class GameApp extends Application {
   stage.setTitle("RainMaker");
   stage.setResizable(false);
   stage.setScene(scene);
-  alert = new Alert(Alert.AlertType.CONFIRMATION);
-  alert.setTitle("Confirmation");
-  alert.setContentText("You have Lost! Play Again?");
-  alert.setHeaderText("Confirmation");
+  LostAlert = new Alert(Alert.AlertType.CONFIRMATION);
+  LostAlert.setTitle("Confirmation");
+  LostAlert.setContentText("You have Lost! Play Again?");
+  LostAlert.setHeaderText("Confirmation");
   ButtonType buttonPlayAgain = new ButtonType("Yes");
   ButtonType NotPlayAgain = new ButtonType("No");
-  alert.getButtonTypes().set(0,buttonPlayAgain);
-  alert.getButtonTypes().set(1,NotPlayAgain);
-  alert.setOnCloseRequest(e->{
-   ButtonType result = alert.getResult();
+  LostAlert.getButtonTypes().set(0,buttonPlayAgain);
+  LostAlert.getButtonTypes().set(1,NotPlayAgain);
+  LostAlert.setOnCloseRequest(e->{
+   ButtonType result = LostAlert.getResult();
    if (result != null && result == buttonPlayAgain) {
     System.out.println("Play Again!");
     gameWindow.restartGame();
-    alert.close();
+    LostAlert.close();
     heliEngineOn=false;
+    loop.start();
    } else {
     System.out.println("CLosing");
     heliEngineOn=false;
-    alert.close();
+    LostAlert.close();
+    stage.close();
+    System.exit(0);
+   }
+  });
+
+  WinAlert = new Alert(Alert.AlertType.CONFIRMATION);
+  WinAlert.setTitle("Confirmation");
+  WinAlert.setContentText("You Won! Play Again?");
+  WinAlert.setHeaderText("Confirmation");
+  WinAlert.getButtonTypes().set(0,buttonPlayAgain);
+  WinAlert.getButtonTypes().set(1,NotPlayAgain);
+  WinAlert.setOnCloseRequest(e->{
+   ButtonType result = WinAlert.getResult();
+   if (result != null && result == buttonPlayAgain) {
+    System.out.println("Play Again!");
+    gameWindow.restartGame();
+    WinAlert.close();
+    heliEngineOn=false;
+    loop.start();
+   } else {
+    System.out.println("CLosing");
+    heliEngineOn=false;
+    WinAlert.close();
     stage.close();
     System.exit(0);
    }
@@ -452,7 +484,6 @@ public class GameApp extends Application {
      if(Math.round(gameWindow.HelicopterSpeed()) == 0){
       startEngine();
      }
-
     }
     if(event.getCode() == KeyCode.W && heliEngineOn){
      gameWindow.increaseHelicopterVelocity();
@@ -491,7 +522,6 @@ public class GameApp extends Application {
   loop = new AnimationTimer() {
    @Override
    public void handle(long now) {
-
     gameWindow.run();
    }
   };
@@ -514,7 +544,12 @@ public class GameApp extends Application {
  public static double YValueGameWindow(){
   return size.getY();
  }
- public static void showAlert(){
-  alert.show();
+ public static void showAlertLost(){
+  loop.stop();
+  LostAlert.show();
+ }
+ public static void showAlertWin(){
+  loop.stop();
+  WinAlert.show();
  }
 }
