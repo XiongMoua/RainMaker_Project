@@ -42,14 +42,17 @@ class Game extends Pane{
   this.setBackground(Background.fill(Color.BLACK));
   this.setScaleY(-1);
   this.getChildren().addAll(pond,cloud,helipad,helicopter);
+
+ }
+ public void changetoStart(){
+   helicopter.changeState(new Starting(helicopter));
  }
  public void run(){
   //iteration make it work
   HelicopterIntersections();
   ShowBorders(showBorders);
   increaseSaturation();
-  lose();
-  win();
+
  }
  public double HelicopterSpeed(){
   return helicopter.returnVelocity();
@@ -74,7 +77,6 @@ class Game extends Pane{
    pond.area();
   }
  }
-
  public void restartGame(){
   pond.resetSpawn();
   cloud.resetSpawn();
@@ -97,15 +99,12 @@ class Game extends Pane{
    helipad.setBorder(Border.stroke(Color.TRANSPARENT));
    pond.setBorder(Border.stroke(Color.TRANSPARENT));
    cloud.setBorder(Border.stroke(Color.TRANSPARENT));
-
   }
  }
+
  public void HelicopterIntersections(){
   OnHelipad = helicopter.getBoundsInParent().intersects(helipad.getBoundsInParent());
   overCloud = helicopter.getBoundsInParent().intersects(cloud.getBoundsInParent());
-  if(GameApp.EngineState()){
-   helicopter.changeState(new RunningState(helicopter));
-  }
  }
  public void increaseHelicopterVelocity(){
   helicopter.increaseVelocity();
@@ -273,20 +272,45 @@ class Helipad extends GameObject{
 }
 abstract class HelicopterState implements Updateable{
  protected Helicopter helicopter;
+ protected double rotationSpeed = 0;
  public HelicopterState(Helicopter helicopter){
   this.helicopter = helicopter;
  }
  abstract void decreaseFuel();
  abstract boolean intersect();
 }
+class Helicopter_Blades extends GameObject implements Updateable{
+ public Helicopter_Blades(){
+  Line blade1 = new Line();
+  blade1.setStartX(0);
+  blade1.setStartY(0);
+  blade1.setEndX(25);
+  blade1.setEndY(25);
+  blade1.setStrokeWidth(2);
+  Line blade2 = new Line();
+  blade2.setStartX(0);
+  blade2.setStartY(0);
+  blade2.setEndX(25);
+  blade2.setEndY(-25);
+  blade2.setStrokeWidth(2);
+  this.getChildren().addAll(blade1,blade2);
+ }
+
+ @Override
+ public void update() {
+
+ }
+}
 class OffState extends HelicopterState{
  public OffState(Helicopter helicopter) {
   super(helicopter);
   update();
+  System.out.println("working");
+  System.out.println(GameApp.EngineState());
  }
+
  @Override
  void decreaseFuel() {
-
  }
  @Override
  boolean intersect() {
@@ -298,11 +322,52 @@ class OffState extends HelicopterState{
 
  }
 }
-class RunningState extends HelicopterState{
- public RunningState(Helicopter helicopter) {
+class Starting extends HelicopterState{
+
+ public Starting(Helicopter helicopter) {
+  super(helicopter);
+  System.out.println("Starting");
+
+
+  update();
+ }
+
+ @Override
+ public void update() {
+  super.helicopter.rotateBlades();
+ }
+ @Override
+ void decreaseFuel() {
+
+ }
+ @Override
+ boolean intersect() {
+  return false;
+ }
+}
+class Stopping extends HelicopterState{
+ public Stopping(Helicopter helicopter) {
+  super(helicopter);
+ }
+ @Override
+ public void update() {
+
+ }
+ @Override
+ void decreaseFuel() {
+
+ }
+ @Override
+ boolean intersect() {
+  return false;
+ }
+}
+class Ready extends HelicopterState{
+ public Ready(Helicopter helicopter) {
   super(helicopter);
   decreaseFuel();
   update();
+
  }
  @Override
  void decreaseFuel() {
@@ -317,6 +382,7 @@ class RunningState extends HelicopterState{
   super.helicopter.setRotate(super.helicopter.rotation);
   super.helicopter.setLayoutX(super.helicopter.updateLocationX());
   super.helicopter.setLayoutY(super.helicopter.updateLocationY());
+  super.helicopter.rotateBlades();
  }
 }
 class Helicopter extends GameObject{
@@ -329,7 +395,9 @@ class Helicopter extends GameObject{
  private double posY = 0;
  public double rotation = 0;
  private Helipad helipad = new Helipad();
+ double bladeRotate = 0;
  boolean onFuel = false;
+ Helicopter_Blades blades = new Helicopter_Blades();
  public Helicopter(){
   Circle base = new Circle(10);
   base.setFill(Color.YELLOW);
@@ -338,7 +406,7 @@ class Helicopter extends GameObject{
   line.setEndY(35);
   line.setStroke(Color.YELLOW);
   line.setStrokeWidth(2);
-  line.setTranslateY(10);
+  line.setTranslateY(-10);
   addToObject(base);
   addToObject(line);
   super.setLayoutY(GameApp.YValueGameWindow()/8);
@@ -350,11 +418,13 @@ class Helicopter extends GameObject{
   fuel.setTranslateY(-(base.getRadius()*2));
   fuel.setTextFill(Color.YELLOW);
   addToObject(fuel);
+  addToObject(blades);
+  state = new OffState(this);
  }
- public int returnFuel(){
-
+ public int returnFuel() {
   return ignition;
  }
+
  public boolean reset(){
   return reset = true;
  }
@@ -363,7 +433,6 @@ class Helicopter extends GameObject{
   super.setLayoutY(GameApp.YValueGameWindow()/8);
   super.setLayoutX(GameApp.XValueGameWindow()/2-16.5);
   rotation =0;
-
   super.setRotate(rotation);
   ignition = 25000;
   fuel.setText(""+ignition);
@@ -388,6 +457,10 @@ class Helicopter extends GameObject{
  public void rotateRight(){
   rotation -= 15;
  }
+ public double rotateBlades(){
+  blades.setRotate(bladeRotate+=5);
+  return bladeRotate;
+ }
  public double updateLocationX(){
   posX = Math.sin(Math.toRadians(-rotation))*velocity;
   return super.getLayoutX()+posX;
@@ -409,7 +482,7 @@ class Helicopter extends GameObject{
  public void RunningOnFuel(){
   if(GameApp.EngineState()){
    if(ignition>0){
-    ignition -= 5;
+    ignition -= 2;
    }
    fuel.setText(""+ignition);
   }
@@ -481,8 +554,10 @@ public class GameApp extends Application {
    @Override
    public void handle(KeyEvent event) {
     if(event.getCode() == KeyCode.I && gameWindow.OnHelipad){
+     System.out.println("Clicked on I");
      if(Math.round(gameWindow.HelicopterSpeed()) == 0){
       startEngine();
+
      }
     }
     if(event.getCode() == KeyCode.W && heliEngineOn){
@@ -522,6 +597,10 @@ public class GameApp extends Application {
   loop = new AnimationTimer() {
    @Override
    public void handle(long now) {
+    if(EngineState()){
+     gameWindow.changetoStart();
+
+    }
     gameWindow.run();
    }
   };
