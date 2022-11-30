@@ -1,4 +1,5 @@
 import javafx.animation.AnimationTimer;
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
@@ -23,7 +24,6 @@ import javafx.scene.transform.Translate;
 import javafx.stage.Stage;
 import java.util.Random;
 /*
-
 Class notes: Use random.nextGaussian
  */
 interface Updateable{
@@ -37,26 +37,33 @@ class Game extends Pane{
  boolean OnHelipad = false;
  boolean overCloud = false;
  boolean showBorders = false;
-
+ double bladeSpeed = 0;
+ int counter = 0;
+ int counter2 = 0;
  public Game(){
   this.setBackground(Background.fill(Color.BLACK));
   this.setScaleY(-1);
   this.getChildren().addAll(pond,cloud,helipad,helicopter);
-
  }
  public void changetoStart(){
    helicopter.changeState(new Starting(helicopter));
+ }
+ public void increaseBladeSpeed(){
+  counter2++;
+  if(counter2 % 5 == 0){
+   bladeSpeed+=2;
+   helicopter.rotateBlades(bladeSpeed);
+  }
  }
  public void run(){
   //iteration make it work
   HelicopterIntersections();
   ShowBorders(showBorders);
   increaseSaturation();
+  increaseBladeSpeed();
+ }
 
- }
- public double HelicopterSpeed(){
-  return helicopter.returnVelocity();
- }
+
  public void lose(){
   if(helicopter.returnFuel() ==0){
    GameApp.showAlertLost();
@@ -81,7 +88,6 @@ class Game extends Pane{
   pond.resetSpawn();
   cloud.resetSpawn();
   helicopter.resetSpawn();
-  helicopter.resetVelocity();
  }
  public void makeVisible(){
   showBorders =!showBorders;
@@ -273,6 +279,7 @@ class Helipad extends GameObject{
 abstract class HelicopterState implements Updateable{
  protected Helicopter helicopter;
  protected double rotationSpeed = 0;
+ protected double velocity;
  public HelicopterState(Helicopter helicopter){
   this.helicopter = helicopter;
  }
@@ -326,15 +333,12 @@ class Starting extends HelicopterState{
 
  public Starting(Helicopter helicopter) {
   super(helicopter);
-  System.out.println("Starting");
-
-
   update();
  }
 
  @Override
  public void update() {
-  super.helicopter.rotateBlades();
+
  }
  @Override
  void decreaseFuel() {
@@ -363,8 +367,10 @@ class Stopping extends HelicopterState{
  }
 }
 class Ready extends HelicopterState{
+ double velocity;
  public Ready(Helicopter helicopter) {
   super(helicopter);
+
   decreaseFuel();
   update();
 
@@ -380,16 +386,14 @@ class Ready extends HelicopterState{
  @Override
  public void update() {
   super.helicopter.setRotate(super.helicopter.rotation);
-  super.helicopter.setLayoutX(super.helicopter.updateLocationX());
-  super.helicopter.setLayoutY(super.helicopter.updateLocationY());
-  super.helicopter.rotateBlades();
+  super.helicopter.setLayoutX(super.helicopter.updateLocationX(velocity));
+  super.helicopter.setLayoutY(super.helicopter.updateLocationY(velocity));
  }
 }
 class Helicopter extends GameObject{
  private int ignition;
  private HelicopterState state;
  private Label fuel;
- private double velocity = 0;
  private double posX = 0;
  boolean reset = false;
  private double posY = 0;
@@ -397,6 +401,7 @@ class Helicopter extends GameObject{
  private Helipad helipad = new Helipad();
  double bladeRotate = 0;
  boolean onFuel = false;
+ double velocity = 0;
  Helicopter_Blades blades = new Helicopter_Blades();
  public Helicopter(){
   Circle base = new Circle(10);
@@ -436,18 +441,12 @@ class Helicopter extends GameObject{
   super.setRotate(rotation);
   ignition = 25000;
   fuel.setText(""+ignition);
-  resetVelocity();
   onFuel=false;
 
  }
- public void resetVelocity(){
-  velocity = 0;
- }
 
- public double returnVelocity(){
-  System.out.println(velocity);
-  return velocity;
- }
+
+
  public void changeState(HelicopterState state){
   this.state = state;
  }
@@ -457,15 +456,22 @@ class Helicopter extends GameObject{
  public void rotateRight(){
   rotation -= 15;
  }
- public double rotateBlades(){
-  blades.setRotate(bladeRotate+=5);
+ public double rotateBlades(double speed){
+  if(blades.getRotate() < 2000){
+   blades.setRotate(blades.getRotate()+speed);
+  }
+  else{
+   blades.setRotate(2000);
+  }
+
+  System.out.println(bladeRotate);
   return bladeRotate;
  }
- public double updateLocationX(){
+ public double updateLocationX(double velocity){
   posX = Math.sin(Math.toRadians(-rotation))*velocity;
   return super.getLayoutX()+posX;
  }
- public double updateLocationY(){
+ public double updateLocationY(double velocity){
   posY = Math.cos(Math.toRadians(-rotation))*velocity;
   return super.getLayoutY()+posY;
  }
@@ -555,10 +561,9 @@ public class GameApp extends Application {
    public void handle(KeyEvent event) {
     if(event.getCode() == KeyCode.I && gameWindow.OnHelipad){
      System.out.println("Clicked on I");
-     if(Math.round(gameWindow.HelicopterSpeed()) == 0){
+//     if(Math.round(gameWindow.HelicopterSpeed()) == 0){
       startEngine();
-
-     }
+     //}
     }
     if(event.getCode() == KeyCode.W && heliEngineOn){
      gameWindow.increaseHelicopterVelocity();
@@ -594,6 +599,7 @@ public class GameApp extends Application {
   });
   gameWindow.increaseSaturation();
 
+  Timeline bladeRotate = new Timeline();
   loop = new AnimationTimer() {
    @Override
    public void handle(long now) {
