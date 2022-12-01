@@ -61,12 +61,14 @@ class Game extends Pane{
   HelicopterIntersections();
   ShowBorders(showBorders);
   increaseSaturation();
-  if(helicopter.returnState().equalsIgnoreCase("StartingState")){
-    helicopter.rotateBlades(10);
+
+ }
+
+ public void rotateBlades(){
+  if(GameApp.EngineState()){
+    helicopter.helibladeTest();
   }
-  if(helicopter.returnState().equalsIgnoreCase("OffState")){
-    helicopter.bladeRotate = 0;
-  }
+
  }
 
  public void lose(){
@@ -292,6 +294,8 @@ abstract class HelicopterState implements Updateable{
  abstract boolean intersect();
 }
 class Helicopter_Blades extends GameObject implements Updateable{
+  double rotation = 0;
+  int counter = 0;
  public Helicopter_Blades(){
   Line blade1 = new Line();
   blade1.setStartX(0);
@@ -308,9 +312,17 @@ class Helicopter_Blades extends GameObject implements Updateable{
   this.getChildren().addAll(blade1,blade2);
  }
 
+
  @Override
  public void update() {
-
+  counter++;
+  //counter % 5 ==0
+  if(counter % 10 == 0){
+    if(rotation < 50)
+      rotation+=1;
+    
+  }
+  super.setRotate(super.getRotate()+rotation);
  }
 }
 class OffState extends HelicopterState{
@@ -446,6 +458,9 @@ HelicopterState state;
  public boolean reset(){
   return reset = true;
  }
+ public void helibladeTest(){
+  blades.update();
+ }
  public void resetSpawn(){
   reset();
   super.setLayoutY(GameApp.YValueGameWindow()/8);
@@ -570,12 +585,23 @@ public class GameApp extends Application {
     System.exit(0);
    }
   });
+  AnimationTimer bladesRotate = new AnimationTimer() {
+
+    @Override
+    public void handle(long now) {
+      gameWindow.rotateBlades();
+      
+    }
+    
+  };
+
 
   scene.setOnKeyPressed(new EventHandler<KeyEvent>() {
    @Override
    public void handle(KeyEvent event) {
     if(event.getCode() == KeyCode.I && gameWindow.OnHelipad){
      System.out.println("Clicked on I");
+     bladesRotate.start();
      gameWindow.changeHelicopterStateToStart();
 //     if(Math.round(gameWindow.HelicopterSpeed()) == 0){
       startEngine();
@@ -619,7 +645,6 @@ public class GameApp extends Application {
   //idea for timeline: have multiple timelines to take care of the speed
   //or just have only 1 and the speed of the blades depend on the how many seconds have passed
   //try the second one first
-  Timeline bladeRotate = new Timeline();
 
   loop = new AnimationTimer() {
    @Override
@@ -628,8 +653,6 @@ public class GameApp extends Application {
     gameWindow.run();
    }
   };
-
-
   loop.start();
   stage.show();
  }
