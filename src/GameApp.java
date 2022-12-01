@@ -45,9 +45,10 @@ class Game extends Pane{
   this.setScaleY(-1);
   this.getChildren().addAll(pond,cloud,helipad,helicopter);
  }
- public void changetoStart(){
-   helicopter.changeState(new Starting(helicopter));
+ public void changeHelicopterStateToStart(){
+  helicopter.changeState(new Starting(helicopter));
  }
+
  public void increaseBladeSpeed(){
   counter2++;
   if(counter2 % 5 == 0){
@@ -60,9 +61,13 @@ class Game extends Pane{
   HelicopterIntersections();
   ShowBorders(showBorders);
   increaseSaturation();
-  increaseBladeSpeed();
+  if(helicopter.returnState().equalsIgnoreCase("StartingState")){
+    helicopter.rotateBlades(10);
+  }
+  if(helicopter.returnState().equalsIgnoreCase("OffState")){
+    helicopter.bladeRotate = 0;
+  }
  }
-
 
  public void lose(){
   if(helicopter.returnFuel() ==0){
@@ -312,7 +317,7 @@ class OffState extends HelicopterState{
  public OffState(Helicopter helicopter) {
   super(helicopter);
   update();
-  System.out.println("working");
+  System.out.println("currently in off state");
   System.out.println(GameApp.EngineState());
  }
 
@@ -322,6 +327,9 @@ class OffState extends HelicopterState{
  @Override
  boolean intersect() {
   return false;
+ }
+ public String toString(){
+  return "OffState";
  }
 
  @Override
@@ -334,6 +342,10 @@ class Starting extends HelicopterState{
  public Starting(Helicopter helicopter) {
   super(helicopter);
   update();
+  System.out.println("Currently in starting state");
+ }
+ public String toString(){
+  return "StartingState";
  }
 
  @Override
@@ -392,7 +404,7 @@ class Ready extends HelicopterState{
 }
 class Helicopter extends GameObject{
  private int ignition;
- private HelicopterState state;
+HelicopterState state;
  private Label fuel;
  private double posX = 0;
  boolean reset = false;
@@ -425,6 +437,7 @@ class Helicopter extends GameObject{
   addToObject(fuel);
   addToObject(blades);
   state = new OffState(this);
+  System.out.println(state);
  }
  public int returnFuel() {
   return ignition;
@@ -445,10 +458,11 @@ class Helicopter extends GameObject{
 
  }
 
-
-
  public void changeState(HelicopterState state){
   this.state = state;
+ }
+ public String returnState(){
+  return state.toString();
  }
  public void rotateLeft(){
   rotation += 15;
@@ -501,6 +515,7 @@ public class GameApp extends Application {
  private static Alert LostAlert;
  private static Alert WinAlert;
  private static AnimationTimer loop;
+ public static void main(String[] args){launch(args);}
  @Override
  public void start(Stage stage) throws Exception {
   Game gameWindow = new Game();
@@ -561,8 +576,10 @@ public class GameApp extends Application {
    public void handle(KeyEvent event) {
     if(event.getCode() == KeyCode.I && gameWindow.OnHelipad){
      System.out.println("Clicked on I");
+     gameWindow.changeHelicopterStateToStart();
 //     if(Math.round(gameWindow.HelicopterSpeed()) == 0){
       startEngine();
+      
      //}
     }
     if(event.getCode() == KeyCode.W && heliEngineOn){
@@ -599,14 +616,15 @@ public class GameApp extends Application {
   });
   gameWindow.increaseSaturation();
 
+  //idea for timeline: have multiple timelines to take care of the speed
+  //or just have only 1 and the speed of the blades depend on the how many seconds have passed
+  //try the second one first
   Timeline bladeRotate = new Timeline();
+
   loop = new AnimationTimer() {
    @Override
    public void handle(long now) {
-    if(EngineState()){
-     gameWindow.changetoStart();
-
-    }
+    
     gameWindow.run();
    }
   };
